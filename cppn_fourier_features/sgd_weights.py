@@ -1,37 +1,65 @@
 import torch
-from torchvision.transforms import Resize, Lambda
-from functorch.compile import compiled_function, draw_graph, aot_function, make_boxed_compiler, make_boxed_func
+from functorch.compile import aot_function, make_boxed_compiler
 from tqdm import trange
 
+class EarlyStopping:
+    def __init__(self, patience:int=1, min_delta:float=0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.min_loss = torch.inf
 
-def sgd_weights(genomes, inputs, target, fn, config):
+    def check_stop(self, loss:torch.Tensor) -> bool:
+        if loss < self.min_loss:
+            self.min_loss = loss
+            self.counter = 0
+        elif loss > (self.min_loss + self.min_delta):
+            self.counter += 1
+            if self.counter >= self.patience:
+                return True
+        return False
+
+def sgd_weights(genomes, inputs, target, fn, config, save_images=None, early_stop=True):
     all_params = []
     for c in genomes:
         c.prepare_optimizer()  # create parameters
-        # add connection weights
         all_params.extend([cx.weight for cx in c.connection_genome.values()])
 
-    # optimize all genome weights
+    # All CPPN weights in one optimizer
     optimizer = torch.optim.Adam(all_params, lr=config.sgd_learning_rate)
 
+    # Compile function
     def f(*gs):
         return torch.stack([g(inputs, force_recalculate=True) for g in gs[0]])
-
     def fw(f,_): return f
-
-    pbar = trange(config.sgd_steps, desc="Compiling AOT function", leave=False)
-
     compiled_fn = aot_function(f, fw_compiler=make_boxed_compiler(fw))
-    # compiled_fn = aot_function(f, fw_compiler=fw)
-    # compiled_fn = make_boxed_func(compiled_fn)
-    
-    pbar.set_description_str("Optimizing weights")
-    
-    for _ in pbar:
+
+    def save_anim(imgs, step, loss):
+        if step % 5 != 0:
+            return
+        imgs_fit = zip(imgs, loss)
+        imgs_fit = sorted(imgs_fit, key=lambda x: x[1], reverse=False)
+        if save_images is not None:
+            save_images.append(imgs_fit[0][0].detach().cpu())
+
+    # Optimize
+    pbar = trange(config.sgd_steps, desc="Compiling population AOT function... ", leave=False)
+    step = 0
+    stopping = EarlyStopping(patience=3 if early_stop else config.sgd_steps, min_delta=-0.001)
+    for step in pbar:
         imgs = compiled_fn(genomes)
-        loss = fn(imgs, target).sum()
+        loss = fn(imgs, target)
+        save_anim(imgs, step, loss.detach())
+        loss = loss.sum()
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        
+        if stopping.check_stop(loss.item()):
+            break
+        
         pbar.set_postfix_str(f"loss={loss.detach().clone().mean().item():.3f}")
+        pbar.set_description_str("Optimizing weights")
+        
+    return step
         
