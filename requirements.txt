@@ -1,5 +1,7 @@
 jupyter
 opencv-python
+imageio
+piq
 cppn-torch @ git+https://github.com/jacksonsdean/cppn_torch.git
 
 --extra-index-url https://download.pytorch.org/whl/cu116

@@ -43,6 +43,7 @@ def loss(imgs, target):
     
     # Fancier:
     imgs, target = correct_dims(imgs, target)
+    imgs = imgs.nan_to_num()
     # loss = 1.0 - ssim(imgs, target)
     loss = 1.0 - msssim(imgs, target)
     return loss
