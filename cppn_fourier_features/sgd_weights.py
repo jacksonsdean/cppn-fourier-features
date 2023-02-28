@@ -19,7 +19,7 @@ class EarlyStopping:
                 return True
         return False
 
-def sgd_weights(genomes, inputs, target, fn, config, save_images=None, early_stop=True):
+def sgd_weights(genomes, inputs, target, fn, config, save_images=None, save_images_every=1, early_stop=True):
     all_params = []
     for c in genomes:
         c.prepare_optimizer()  # create parameters
@@ -29,13 +29,13 @@ def sgd_weights(genomes, inputs, target, fn, config, save_images=None, early_sto
     optimizer = torch.optim.Adam(all_params, lr=config.sgd_learning_rate)
 
     # Compile function
-    def f(*gs):
-        return torch.stack([g(inputs, force_recalculate=True) for g in gs[0]])
+    def f(X, *gs):
+        return torch.stack([g(X, force_recalculate=True) for g in gs[0]])
     def fw(f,_): return f
     compiled_fn = aot_function(f, fw_compiler=make_boxed_compiler(fw))
 
     def save_anim(imgs, step, loss):
-        if step % 5 != 0:
+        if step % save_images_every != 0:
             return
         imgs_fit = zip(imgs, loss)
         imgs_fit = sorted(imgs_fit, key=lambda x: x[1], reverse=False)
@@ -45,12 +45,12 @@ def sgd_weights(genomes, inputs, target, fn, config, save_images=None, early_sto
     # Optimize
     pbar = trange(config.sgd_steps, desc="Compiling population AOT function... ", leave=False)
     step = 0
-    stopping = EarlyStopping(patience=3 if early_stop else config.sgd_steps, min_delta=-0.001)
+    stopping = EarlyStopping(patience=3 if early_stop else config.sgd_steps, min_delta=-0.01)
     for step in pbar:
-        imgs = compiled_fn(genomes)
+        imgs = compiled_fn(inputs, genomes)
         loss = fn(imgs, target)
         save_anim(imgs, step, loss.detach())
-        loss = loss.sum()
+        loss = loss.mean()
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
