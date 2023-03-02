@@ -45,7 +45,7 @@ def sgd_weights(genomes, inputs, target, fn, config, save_images=None, save_imag
     # Optimize
     pbar = trange(config.sgd_steps, desc="Compiling population AOT function... ", leave=False)
     step = 0
-    stopping = EarlyStopping(patience=3 if early_stop else config.sgd_steps, min_delta=-0.01)
+    stopping = EarlyStopping(patience=3 if early_stop else config.sgd_steps, min_delta=-0.001)
     for step in pbar:
         imgs = compiled_fn(inputs, genomes)
         loss = fn(imgs, target)
