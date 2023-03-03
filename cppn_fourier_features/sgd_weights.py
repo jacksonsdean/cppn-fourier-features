@@ -13,7 +13,7 @@ class EarlyStopping:
         if loss < (self.min_loss + self.min_delta):
             self.min_loss = loss
             self.counter = 0
-        elif loss > self.min_loss:
+        else:
             self.counter += 1
             if self.counter >= self.patience:
                 return True
