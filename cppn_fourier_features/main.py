@@ -85,6 +85,9 @@ config.normalize_outputs = True
 # config.init_connection_probability = 1.0 # more sgd
 config.num_inputs = n_features + (incl_xy*2 + config.use_radial_distance + config.use_input_bias)
 
+coord_range = (-0.5, 0.5) # picbreeder/MOVE
+#coord_range = (0, 1) # FF let networks learn
+
 # SGD
 config.sgd_learning_rate = .05 # high seems to work well at least on sunrise
 lr_decay = 1.0 # not sure if needed
@@ -135,8 +138,7 @@ const_inputs = ImageCPPN.initialize_inputs(
     config.use_input_bias,
     num_coord_inputs,
     device=config.device,
-    coord_range=(-0.5, 0.5) # picbreeder/MOVE
-    # coord_range=(0, 1) # FF let networks learn
+    coord_range=coord_range
     )
 
 B = torch.randn((n_features//2, num_coord_inputs), device=device) * B_scale
