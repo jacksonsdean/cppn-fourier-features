@@ -8,7 +8,7 @@ import os
 import matplotlib.pyplot as plt
 from tqdm import trange
 import random
-from skimage import img_as_ubyte
+from skimage import img_as_ubyte # for imageio gifs
 
 from cppn_torch import ImageCPPN, CPPNConfig
 from cppn_torch.activation_functions import *
@@ -231,7 +231,7 @@ save_image(img, f'images/final.png')
 plt.imshow(img)
 
 # %% Save gif
-if make_gif:
+if make_gif and anim_images:
     print("saving gif...")
     imageio.mimsave('images/evolution.gif', [img_as_ubyte(i) for i in anim_images], fps=24)
     plt.show();
