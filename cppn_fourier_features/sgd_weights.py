@@ -20,7 +20,7 @@ class EarlyStopping:
         return False
 
 
-def sgd_weights(genomes, inputs, target, fn, config, save_images=None, save_images_every=1, early_stop=True):
+def sgd_weights(genomes, inputs, target, fn, config, save_images=None, save_images_every=1, early_stop=True, min_early_stop_delta=-0.0003):
     all_params = []
     for c in genomes:
         c.prepare_optimizer()  # create parameters
@@ -57,7 +57,7 @@ def sgd_weights(genomes, inputs, target, fn, config, save_images=None, save_imag
 
     # Optimize
     step = 0
-    stopping = EarlyStopping(patience=3 if early_stop else config.sgd_steps, min_delta=-0.001)
+    stopping = EarlyStopping(patience=3 if early_stop else config.sgd_steps, min_delta=min_early_stop_delta)
     for step in pbar:
         imgs = compiled_fn(inputs, genomes)
         loss = fn(imgs, target)
