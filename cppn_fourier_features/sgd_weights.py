@@ -70,7 +70,7 @@ def sgd_weights(genomes, inputs, target, fn, config, save_images=None, save_imag
         if stopping.check_stop(loss.item()):
             break
         
-        pbar.set_postfix_str(f"loss={loss.detach().clone().mean().item():.3f}")
+        pbar.set_postfix_str(f"mean pop loss={loss.detach().clone().mean().item():.3f}")
         pbar.set_description_str("Optimizing weights")
         
     return step
