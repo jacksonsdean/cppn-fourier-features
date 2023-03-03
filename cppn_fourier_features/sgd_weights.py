@@ -9,15 +9,16 @@ class EarlyStopping:
         self.counter = 0
         self.min_loss = torch.inf
 
-    def check_stop(self, loss:torch.Tensor) -> bool:
-        if loss < self.min_loss:
+    def check_stop(self, loss:float) -> bool:
+        if loss < (self.min_loss + self.min_delta):
             self.min_loss = loss
             self.counter = 0
-        elif loss > (self.min_loss + self.min_delta):
+        elif loss > self.min_loss:
             self.counter += 1
             if self.counter >= self.patience:
                 return True
         return False
+
 
 def sgd_weights(genomes, inputs, target, fn, config, save_images=None, save_images_every=1, early_stop=True):
     all_params = []
@@ -28,11 +29,23 @@ def sgd_weights(genomes, inputs, target, fn, config, save_images=None, save_imag
     # All CPPN weights in one optimizer
     optimizer = torch.optim.Adam(all_params, lr=config.sgd_learning_rate)
 
-    # Compile function
     def f(X, *gs):
         return torch.stack([g(X, force_recalculate=True) for g in gs[0]])
     def fw(f,_): return f
-    compiled_fn = aot_function(f, fw_compiler=make_boxed_compiler(fw))
+    
+    compiled_fn = f
+    pbar = trange(config.sgd_steps, leave=False)
+    
+    if hasattr(config, 'use_aot') and config.use_aot:
+        pbar.set_description_str("Compiling population AOT function... ")
+        if torch.__version__.startswith("1") or config.activation_mode != 'node':
+            if hasattr(config, 'use_aot') and config.use_aot:
+                # super slow unless there are a ton of SGD steps
+                compiled_fn = aot_function(f, fw_compiler=make_boxed_compiler(fw))
+        else:
+            torch._dynamo.config.verbose=True
+            compiled_fn = torch.compile(f)
+    
 
     def save_anim(imgs, step, loss):
         if step % save_images_every != 0:
@@ -43,7 +56,6 @@ def sgd_weights(genomes, inputs, target, fn, config, save_images=None, save_imag
             save_images.append(imgs_fit[0][0].detach().cpu())
 
     # Optimize
-    pbar = trange(config.sgd_steps, desc="Compiling population AOT function... ", leave=False)
     step = 0
     stopping = EarlyStopping(patience=3 if early_stop else config.sgd_steps, min_delta=-0.001)
     for step in pbar:

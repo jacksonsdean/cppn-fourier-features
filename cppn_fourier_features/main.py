@@ -38,54 +38,58 @@ def input_mapping(X, B):
 
 #%% # Loss function
 def loss(imgs, target):
+    imgs = imgs.nan_to_num() # TODO
     # MSE:
-    # loss = torch.mean((imgs - target) ** 2, dim=(1, 2, 3))
-    
-    # Fancier:
+    loss = torch.mean((imgs - target) ** 2, dim=(1, 2, 3))
+    return loss
+
+    # Other fancier losses:
     imgs, target = correct_dims(imgs, target)
-    imgs = imgs.nan_to_num()
     # loss = 1.0 - ssim(imgs, target)
+    # loss = 1.0 - fsim(imgs, target)
     loss = 1.0 - msssim(imgs, target)
     return loss
 
 #%% # Params
 # Features
-n_features = 64
-B_scale = 2.0 # 10.0 worked best in original paper, but lower (~2.0) seems to work better for sunrise
-img_res = 300
+n_features = 256 # 256 good, uses a lot of memory though
+img_res = 32
 incl_xy = True
 make_gif = False
+
+B_scale = 1.25 # 10.0 worked best in original paper, but lower (2.0) seems to work better here
+# B_scale_factor = 10.0
+# B_scale = B_scale_factor * img_res / 256.  # TODO: maybe try something like this to be more robust to different resolutions?
 
 # Evolution
 gens = 100
 pop_size = 10
 tourn_size = 5
-tourn_winners = 2
-elitism = 3
+tourn_winners = 1
+elitism = 1
 
 # CPPNs
 config = CPPNConfig()
 config.seed = SEED
 config.activations = [tanh, sigmoid, relu, gauss, identity, sin]
-# config.activations = [tanh]
 config.res_h = img_res
 config.res_w = img_res
 config.prob_mutate_weight = 0.0 # no weight mutation
 config.hidden_nodes_at_start = 0
 config.use_input_bias = True
 config.node_agg = 'sum'
-config.activation_mode = 'layer'
+config.activation_mode = 'layer' # layer slightly faster than node.. TODO: population?
 config.normalize_outputs = True
-# config.prob_add_node = .9 # very high to encourage growth
-# config.prob_add_connection = .8 # 
+# config.prob_add_node = .9 # very high to encourage growth?
+# config.prob_add_connection = .8 "
 # config.init_connection_probability = 1.0 # more sgd
 config.num_inputs = n_features + (incl_xy*2 + config.use_radial_distance + config.use_input_bias)
 
 # SGD
-config.sgd_learning_rate = .1 # high seems to work well at least on sunrise
-lr_decay = 0.9
+config.sgd_learning_rate = .05 # high seems to work well at least on sunrise
+lr_decay = 1.0 # not sure if needed
 sgd_every = 1 # anything other than 1 doesn't really make sense with this simple of an EA
-config.sgd_steps = 100
+config.sgd_steps = 30
 
 #%% # Load target image
 image_map = {
@@ -131,7 +135,8 @@ const_inputs = ImageCPPN.initialize_inputs(
     config.use_input_bias,
     num_coord_inputs,
     device=config.device,
-    coord_range=(-0.5, 0.5)
+    coord_range=(-0.5, 0.5) # picbreeder/MOVE
+    # coord_range=(0, 1) # FF let networks learn
     )
 
 B = torch.randn((n_features//2, num_coord_inputs), device=device) * B_scale
@@ -215,7 +220,7 @@ except RuntimeError as e:
     
 # do a cheeky sgd on the final champion's weights
 population = sorted(population, key=lambda x: x.fitness, reverse=True)
-config.sgd_steps = 100
+config.sgd_steps = 400
 config.sgd_learning_rate = 1e-3
 sgd_weights(population[:1], X, target, loss, config, anim_images)
 
