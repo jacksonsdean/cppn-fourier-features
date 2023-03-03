@@ -52,8 +52,8 @@ def loss(imgs, target):
 
 #%% # Params
 # Features
-n_features = 256 # 256 good, but uses a lot of memory for higher resolutions
-img_res = 32
+n_features = 32 # 256 good, but uses a lot of memory for higher resolutions
+img_res = 64
 incl_xy = True
 make_gif = False
 
@@ -92,7 +92,7 @@ coord_range = (-0.5, 0.5) # picbreeder/MOVE
 config.sgd_learning_rate = .05 # high seems to work well at least on sunrise
 lr_decay = 1.0 # not sure if needed
 sgd_every = 1 # anything other than 1 doesn't really make sense with this simple of an EA
-config.sgd_steps = 30
+config.sgd_steps = 60
 
 #%% # Load target image
 image_map = {
