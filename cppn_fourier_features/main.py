@@ -52,14 +52,14 @@ def loss(imgs, target):
 
 #%% # Params
 # Features
-n_features = 256 # 256 good, uses a lot of memory though
+n_features = 256 # 256 good, but uses a lot of memory for higher resolutions
 img_res = 32
 incl_xy = True
 make_gif = False
 
-B_scale = 1.25 # 10.0 worked best in original paper, but lower (2.0) seems to work better here
+B_scale = 1.25 # 10.0 worked best in original paper, but lower (~1-3) seems to work better here
 # B_scale_factor = 10.0
-# B_scale = B_scale_factor * img_res / 256.  # TODO: maybe try something like this to be more robust to different resolutions?
+# B_scale = B_scale_factor * img_res / 256.  # this ratio seems to be more robust to different resolutions?
 
 # Evolution
 gens = 100
@@ -200,7 +200,6 @@ try:
         if (gen+1) % sgd_every == 0:
             steps = sgd_weights(children, X, target, loss, config, anim_images)
             config.sgd_learning_rate *= lr_decay
-            config._not_dirty() # hacky
         
         # Evaluation
         imgs = [child(X) for child in children]
