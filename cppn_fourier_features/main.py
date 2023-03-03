@@ -89,10 +89,10 @@ coord_range = (-0.5, 0.5) # picbreeder/MOVE
 #coord_range = (0, 1) # FF let networks learn
 
 # SGD
-config.sgd_learning_rate = .05 # high seems to work well at least on sunrise
+config.sgd_learning_rate = .15 # high seems to work well at least on sunrise
 lr_decay = 1.0 # not sure if needed
 sgd_every = 1 # anything other than 1 doesn't really make sense with this simple of an EA
-config.sgd_steps = 60
+config.sgd_steps = 30
 
 #%% # Load target image
 image_map = {
