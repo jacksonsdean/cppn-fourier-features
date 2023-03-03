@@ -53,8 +53,8 @@ def loss(imgs, target):
 
 #%% # Params
 # Features
-n_features = 32 # 256 good, but uses a lot of memory for higher resolutions
-img_res = 32
+n_features = 64 # 256 good, but uses a lot of memory for higher resolutions
+img_res = 64
 incl_xy = True
 make_gif = False
 
@@ -225,7 +225,7 @@ except RuntimeError as e:
 population = sorted(population, key=lambda x: x.fitness, reverse=True)
 config.sgd_steps = 400
 config.sgd_learning_rate = 1e-3
-sgd_weights(population[:1], X, target, loss, config, anim_images, lr_decay_in_gen, min_early_stop_delta=-1e-6)
+sgd_weights(population[:1], X, target, loss, config, anim_images, lr_decay_in_gen, min_early_stop_delta=-1e-5)
 
 #%% Show result
 img = population[0](X).detach().cpu()
