@@ -95,6 +95,7 @@ lr_decay_in_gen = 1.0 # not sure if needed
 lr_decay_between_gen = 1.0 # not sure if needed
 sgd_every = 1 # anything other than 1 doesn't really make sense with this simple of an EA
 config.sgd_steps = 30
+min_early_stop_delta = -1e-3 # closer to 0 results in less sgd per generation
 
 #%% # Load target image
 image_map = {
@@ -200,7 +201,7 @@ try:
         
         # SGD
         if (gen+1) % sgd_every == 0:
-            steps = sgd_weights(children, X, target, loss, config, anim_images, lr_decay_in_gen)
+            steps = sgd_weights(children, X, target, loss, config, anim_images, lr_decay_in_gen, min_early_stop_delta=min_early_stop_delta)
             config.sgd_learning_rate *= lr_decay_between_gen
         
         # Evaluation

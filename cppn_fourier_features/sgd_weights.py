@@ -61,7 +61,7 @@ def sgd_weights(genomes, inputs, target, fn, config, save_images=None, lr_decay=
     for step in pbar:
         imgs = compiled_fn(inputs, genomes)
         loss = fn(imgs, target)
-        pbar.set_postfix_str(f"mean|min pop loss = {loss.detach().mean().item():.3f} | {loss.detach().min().item():.3f}")
+        pbar.set_postfix_str(f"pop loss: mean {loss.detach().mean().item():.3f} | min {loss.detach().min().item():.3f}")
         save_anim(imgs, step, loss.detach())
         loss = loss.mean()
         optimizer.zero_grad()
