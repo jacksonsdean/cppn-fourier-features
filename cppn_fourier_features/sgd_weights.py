@@ -1,6 +1,7 @@
 import torch
 from functorch.compile import aot_function, make_boxed_compiler
 from tqdm import trange
+from cppn_torch.graph_util import activate_population
 
 class EarlyStopping:
     def __init__(self, patience:int=1, min_delta:float=0):
@@ -30,7 +31,10 @@ def sgd_weights(genomes, inputs, target, fn, config, save_images=None, save_imag
     optimizer = torch.optim.Adam(all_params, lr=config.sgd_learning_rate)
 
     def f(X, *gs):
-        return torch.stack([g(X, force_recalculate=True) for g in gs[0]])
+        if config.activation_mode == 'population':
+            return activate_population(gs[0], config, X)
+        else:
+            return torch.stack([g(X, force_recalculate=True) for g in gs[0]])
     def fw(f,_): return f
     
     compiled_fn = f

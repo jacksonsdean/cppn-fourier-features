@@ -11,6 +11,7 @@ import random
 from skimage import img_as_ubyte # for imageio gifs
 
 from cppn_torch import ImageCPPN, CPPNConfig
+from cppn_torch.graph_util import activate_population
 from cppn_torch.activation_functions import *
 from cppn_torch.fitness_functions import *
 from sgd_weights import sgd_weights
@@ -78,7 +79,7 @@ config.prob_mutate_weight = 0.0 # no weight mutation
 config.hidden_nodes_at_start = 0
 config.use_input_bias = True
 config.node_agg = 'sum'
-config.activation_mode = 'layer' # layer slightly faster than node.. TODO: population?
+config.activation_mode = 'layer' # layer slightly faster than node.. population not great yet
 config.normalize_outputs = True
 # config.prob_add_node = .9 # very high to encourage growth?
 # config.prob_add_connection = .8 "
@@ -177,7 +178,13 @@ for i in range(pop_size):
     population[-1].mutate()
     population[-1].add_node() # start with extra node
     
-fits = 1.0-loss(torch.stack([ind(X) for ind in population]), target)
+if config.activation_mode == "population":
+    imgs = activate_population(population, config, X)
+else:
+    imgs = torch.stack([ind(X) for ind in population])
+    
+fits = 1.0-loss(imgs, target)
+
 for i, fit in enumerate(fits):
     population[i].fitness = fit
 
@@ -202,8 +209,11 @@ try:
             config.sgd_learning_rate *= lr_decay
         
         # Evaluation
-        imgs = [child(X) for child in children]
-        fits = 1.0-loss(torch.stack(imgs), target)
+        if config.activation_mode == "population":
+            imgs = activate_population(children, config, X)
+        else:
+            imgs = torch.stack([child(X) for child in children])
+        fits = 1.0-loss(imgs, target)
         for i, fit in enumerate(fits):
             children[i].fitness = fit
         
