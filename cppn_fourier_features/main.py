@@ -14,6 +14,7 @@ from cppn_torch import ImageCPPN, CPPNConfig
 from cppn_torch.graph_util import activate_population
 from cppn_torch.activation_functions import *
 from cppn_torch.fitness_functions import *
+from cppn_torch.util import visualize_network
 from sgd_weights import sgd_weights
 from animate import animate, save_image
 
@@ -53,8 +54,8 @@ def loss(imgs, target):
 
 #%% # Params
 # Features
-n_features = 256 # 256 good, but uses a lot of memory for higher resolutions
-img_res = 32
+n_features = 64 # 256 good, but uses a lot of memory for higher resolutions
+img_res = 64
 incl_xy = True
 make_gif = False
 
@@ -76,7 +77,7 @@ config.activations = [tanh, sigmoid, relu, gauss, identity, sin]
 config.res_h = img_res
 config.res_w = img_res
 config.prob_mutate_weight = 0.0 # no weight mutation
-config.hidden_nodes_at_start = 0
+config.hidden_nodes_at_start = 10
 config.use_input_bias = True
 config.node_agg = 'sum'
 config.activation_mode = 'layer' # layer slightly faster than node.. population not great yet
@@ -90,10 +91,12 @@ coord_range = (-0.5, 0.5) # picbreeder/MOVE
 #coord_range = (0, 1) # FF let networks learn
 
 # SGD
-config.sgd_learning_rate = .05 # high seems to work well at least on sunrise
-lr_decay = 1.0 # not sure if needed
+config.sgd_learning_rate = .15 # high seems to work well at least on sunrise
+lr_decay_in_gen = 1.0 # not sure if needed
+lr_decay_between_gen = 1.0 # not sure if needed
 sgd_every = 1 # anything other than 1 doesn't really make sense with this simple of an EA
 config.sgd_steps = 30
+min_early_stop_delta = -1e-3 # closer to 0 results in less sgd per generation
 
 #%% # Load target image
 image_map = {
@@ -157,7 +160,7 @@ print("inputs shape:", X.shape, "\n")
 
 #%% # Tournament selection
 def tournament_selection(population):
-    new_pop = population[:elitism] # elitism
+    new_pop = population[:elitism] # done in main loop now
     while len(new_pop) < pop_size:
         random_inds = torch.randint(0, len(population), (tourn_size,))
         subpop = [population[i] for i in random_inds]
@@ -173,8 +176,6 @@ def tournament_selection(population):
 population = []
 for i in range(pop_size):
     population.append(ImageCPPN(config))
-    population[-1].mutate()
-    population[-1].mutate()
     population[-1].mutate()
     population[-1].add_node() # start with extra node
     
@@ -203,10 +204,12 @@ try:
             child.mutate()
             children.append(child)
         
+        children.extend([g.clone() for g in population[:elitism]])
+        
         # SGD
         if (gen+1) % sgd_every == 0:
-            steps = sgd_weights(children, X, target, loss, config, anim_images)
-            config.sgd_learning_rate *= lr_decay
+            steps = sgd_weights(children, X, target, loss, config, anim_images, lr_decay_in_gen, min_early_stop_delta=min_early_stop_delta)
+            config.sgd_learning_rate *= lr_decay_between_gen
         
         # Evaluation
         if config.activation_mode == "population":
@@ -233,12 +236,13 @@ except RuntimeError as e:
 population = sorted(population, key=lambda x: x.fitness, reverse=True)
 config.sgd_steps = 400
 config.sgd_learning_rate = 1e-3
-sgd_weights(population[:1], X, target, loss, config, anim_images)
+sgd_weights(population[:1], X, target, loss, config, anim_images, lr_decay_in_gen, min_early_stop_delta=-1e-5)
 
 #%% Show result
 img = population[0](X).detach().cpu()
 save_image(img, f'images/final.png')
-plt.imshow(img)
+
+visualize_network(population[0], save_name=f'images/final_genome.png')
 
 # %% Save gif
 if make_gif and anim_images:
